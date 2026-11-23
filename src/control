@@ -1,0 +1,8 @@
+Package: com.blade.app
+Name: Blade
+Version: 1.0
+Architecture: iphoneos-arm
+Description: iOS kernel toolbox - file manager, process list, decryption, jbclean
+Maintainer: research
+Section: Applications
+Priority: optional
