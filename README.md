@@ -45,15 +45,24 @@ iOS 内核工具箱（AppDump / Blade 系）：砸壳、应用容器浏览、**�
 
 `src/kexploit/skblockupdates.{h,m}` + `src/app/SKBlockUpdatesViewController.{h,m}`
 
-* 注入 **installd**，在 `.app` 的父目录建立
-  `com.apple.mobileinstallation.placeholder`（目录，权限 `0000`）：安装服务会把该应用
-  当成「正在安装」，从而跳过更新。恢复时 `chmod 0755` + `rmdir`。
-* installd 平时休眠，需要用户先去 App Store 点任意 App 的「获取」唤醒；代码每 2 秒
-  重试，最长约 2 分钟，日志页会持续提示。
+* 在 `.app` 的父目录建立 `com.apple.mobileinstallation.placeholder`（目录，权限
+  `0000`）：安装服务会把该应用当成「正在安装」，从而跳过更新。恢复时
+  `chmod 0755` + `rmdir`。
+* Cyanide 是把这个 `mkdir` 放进 **installd** 里做（它本身是普通 App，写不了
+  `/var/containers`）；本 App 带 `platform-application`、无沙盒，再配合内核层的父目录
+  属主修复（`SKPermissionRepairParent`），本地就能建同一个目录 —— **不依赖 RemoteCall**，
+  iOS 17 上同样可用。日志页会显示每一项的 errno。
 * 列表里直接显示每个应用当前是否已被阻止。
 
-> 这两个功能都要在别的进程里执行代码，**必须 arm64e 构建**（RemoteCall 需要 pacia
-> 签名的 PC/LR）。arm64 包里会明确提示「当前为 arm64 构建」，不会静默失败。
+> **应用降级**要在 SpringBoard 里执行代码，必须 arm64e 构建（RemoteCall 需要 pacia
+> 签名的 PC/LR），而且在本仓库的 RemoteCall 支持范围（iOS ≤16）内才放行；iOS 17+
+> 会直接给出原因、不再进入注入（dump 的 RemoteCall 依赖「扫内核栈换 t_tro」，
+> iOS 17 不再把 t_tro 压栈，注入线程会被毒化）。
+>
+> **阻止更新**是本地实现，arm64 包也能用，不需要注入。
+>
+> 注入窗口内若发生 BUS/SEGV/ILL/TRAP，`SKCrashGuard` 只把出事线程 park 住，
+> App 继续运行并保留日志（以前是直接闪退）。
 
 ### 修复写权限
 
