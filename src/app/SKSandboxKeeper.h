@@ -75,6 +75,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// Read-only check; performs no kernel writes.
 + (BOOL)hasPrivilegedWriteAccess;
 
+/// 上一次 hasPrivilegedWriteAccess 探针失败时的 errno（EPERM=策略拒绝，
+/// EACCES=文件属主不对，EROFS/ENOSPC 是别的原因）。探针成功时为 0。
++ (int)writeAccessProbeErrno;
+
 /// Probe, and if write access is gone, re-apply the sandbox policy once.
 /// Synchronous. Returns YES when write access is present afterwards.
 ///
