@@ -7,7 +7,7 @@
 #import "SKToolApps.h"
 #import "SKToolLogViewController.h"
 #import "skblockupdates.h"
-#import "skrc.h"
+#import "darksword.h"
 
 @interface SKBlockUpdatesViewController () <UISearchResultsUpdating>
 @property (nonatomic, strong) NSArray<SKToolApp *> *apps;
@@ -128,10 +128,8 @@
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (!skrc_build_supports_injection()) {
-        return @"当前为 arm64 构建，无法注入 installd；请使用 arm64e 版本。";
-    }
-    return @"执行时会等待 installd 被唤醒：请先去 App Store 点任意 App 的「获取」，再回来等待完成。";
+    return @"勾选后点右上角「应用」，选择阻止或恢复。目录在本地建立（必要时用内核修父目录属主），"
+            "不需要注入进程。已阻止的应用在 App Store 里仍会显示「更新」，但不会真的装上。";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {

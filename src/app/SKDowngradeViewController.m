@@ -178,8 +178,9 @@ static NSString *SKVersionDateString(NSDictionary *v) {
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (!skrc_build_supports_injection()) {
-        return @"当前为 arm64 构建：可以查询版本，但注入 SpringBoard 需要 arm64e 版本。";
+    NSString *why = skdg_unsupported_reason();
+    if (why.length) {
+        return [NSString stringWithFormat:@"可以查询版本，但暂时无法执行：%@", why];
     }
     return @"版本列表由第三方接口提供，只需要其中的 external_identifier；确认后由 App Store 下载。";
 }
@@ -424,6 +425,12 @@ static NSArray<NSString *> *SKDowngradeCountryCodes(void) {
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
 
     [host presentViewController:nav animated:YES completion:^{
+        NSString *why = skdg_unsupported_reason();
+        if (why.length) {
+            [logVC appendLine:why];
+            [logVC finishWithSuccess:NO message:@"降级不可用"];
+            return;
+        }
         [logVC setStatusText:@"正在注入 SpringBoard…"];
         [logVC appendLine:[NSString stringWithFormat:@"目标：%@  trackId=%lld  versionId=%lld",
                            appName ?: @"", trackId, versionId]];
@@ -437,6 +444,7 @@ static NSArray<NSString *> *SKDowngradeCountryCodes(void) {
                 case 0:  msg = @"请求已提交"; break;
                 case 1:  msg = @"内核未就绪"; break;
                 case 20: msg = @"注入失败"; break;
+                case 30: msg = @"当前系统不支持注入"; break;
                 case 98: msg = @"超时"; break;
                 default: msg = [NSString stringWithFormat:@"失败（%d）", rc]; break;
             }

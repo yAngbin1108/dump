@@ -8,7 +8,7 @@
 #import "SKDowngradeViewController.h"
 #import "SKBlockUpdatesViewController.h"
 #import "skrc.h"
-#import "darksword.h"
+#import "skdowngrade.h"
 
 @implementation SKToolsViewController
 
@@ -44,16 +44,12 @@
         return @"遍历内核 allproc 列出全部进程，可结束进程、编辑内存。需要先运行利用链。";
     }
     if (section == 1) {
-        return @"通过注入 SpringBoard，向 App Store 提交历史版本的下载请求。"
-                "需要内核读写 + arm64e 构建。";
+        NSString *why = skdg_unsupported_reason();
+        return why.length ? why
+            : @"通过注入 SpringBoard，向 App Store 提交历史版本的下载请求。";
     }
-    BOOL ready = ds_is_ready();
-    NSString *state = ready ? @"内核读写已就绪。" : @"需要先运行利用链。";
-    if (!skrc_build_supports_injection()) {
-        state = @"当前是 arm64 构建，无法注入 installd；请使用 arm64e 版本。";
-    }
-    return [@"在 .app 的父目录建立 com.apple.mobileinstallation.placeholder 目录（权限 0000），"
-            "安装服务会把该应用当作「正在安装」而跳过更新。" stringByAppendingString:state];
+    return @"在 .app 的父目录建立 com.apple.mobileinstallation.placeholder 目录（权限 0000），"
+            "安装服务会把该应用当作「正在安装」而跳过更新。直接在本地执行，不注入进程。";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
