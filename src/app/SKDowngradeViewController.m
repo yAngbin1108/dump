@@ -19,6 +19,15 @@
 
 #pragma mark - 版本选择页
 
+/// 历史版本接口用 created_at，早期接口用 release_date，两者都认。
+static NSString *SKVersionDateString(NSDictionary *v) {
+    for (NSString *key in @[ @"created_at", @"release_date" ]) {
+        NSString *d = [v[key] description];
+        if (d.length) return d;
+    }
+    return @"";
+}
+
 @interface SKVersionPickerViewController : UITableViewController
 @property (nonatomic, strong) NSArray<NSDictionary *> *versions;
 @property (nonatomic, assign) long long trackId;
@@ -56,7 +65,7 @@
     NSDictionary *v = self.versions[indexPath.row];
     NSString *bundleVersion = [v[@"bundle_version"] description] ?: @"?";
     NSString *extId = [v[@"external_identifier"] description] ?: @"";
-    NSString *date = [v[@"release_date"] description] ?: @"";
+    NSString *date = SKVersionDateString(v);
     cell.textLabel.text = bundleVersion;
     cell.detailTextLabel.text = [NSString stringWithFormat:@"ID %@%@", extId,
                                  date.length ? [@"  ·  " stringByAppendingString:date] : @""];
@@ -316,15 +325,20 @@ static NSArray<NSString *> *SKDowngradeCountryCodes(void) {
         NSArray *list = [json isKindOfClass:[NSDictionary class]] ? json[@"data"] : nil;
         if (![list isKindOfClass:[NSArray class]]) list = @[];
         NSMutableArray<NSDictionary *> *filtered = [NSMutableArray array];
+        NSMutableSet<NSString *> *seenVersion = [NSMutableSet set];
         for (id v in list) {
             if (![v isKindOfClass:[NSDictionary class]]) continue;
             if ([v[@"external_identifier"] description].length == 0) continue;
+            // 同一版本号在不同区会出现多条，只留第一条（列表已按发布时间倒序）
+            NSString *ver = [v[@"bundle_version"] description] ?: @"";
+            if (ver.length) {
+                if ([seenVersion containsObject:ver]) continue;
+                [seenVersion addObject:ver];
+            }
             [filtered addObject:v];
         }
         [filtered sortUsingComparator:^NSComparisonResult(NSDictionary *x, NSDictionary *y) {
-            NSString *dx = [x[@"release_date"] description] ?: @"";
-            NSString *dy = [y[@"release_date"] description] ?: @"";
-            return [dy compare:dx];
+            return [SKVersionDateString(y) compare:SKVersionDateString(x)];
         }];
         if (completion) completion(filtered, nil);
     }] resume];
