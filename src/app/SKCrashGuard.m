@@ -11,7 +11,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
-#include <ucontext.h>
 #include <unistd.h>
 
 // 预先打开的日志 fd。信号处理器里只能用 async-signal-safe 的调用，
@@ -84,15 +83,19 @@ static void crash_signal_handler(int sig, siginfo_t *info, void *uctx) {
         crash_puts("*** thread parked, process kept alive ***\n");
 
 #if defined(__arm64__)
-        ucontext_t *uc = (ucontext_t *)uctx;
-        if (uc && uc->uc_mcontext) {
-#if defined(__DARWIN_UNIX03)
-            uc->uc_mcontext->__ss.__pc = (uintptr_t)sk_park_forever;
-            uc->uc_mcontext->__ss.__lr = (uintptr_t)sk_park_forever;
-#else
-            uc->uc_mcontext->ss.pc = (uintptr_t)sk_park_forever;
-            uc->uc_mcontext->ss.lr = (uintptr_t)sk_park_forever;
-#endif
+        // 不 include <ucontext.h>：它在 iOS SDK 里需要 _XOPEN_SOURCE，而我们这里
+        // 只用一个固定布局（arm64 上稳定）：
+        //   struct __darwin_ucontext: uc_mcontext @ +48
+        //   struct __darwin_mcontext64: __ss @ +16
+        //   __darwin_arm_thread_state64: lr @ +240, sp @ +248, pc @ +256
+        uint8_t *uc = (uint8_t *)uctx;
+        if (uc) {
+            uintptr_t mctx = *(uintptr_t *)(uc + 48);
+            if (mctx) {
+                uint8_t *ss = (uint8_t *)mctx + 16;
+                *(uintptr_t *)(ss + 240) = (uintptr_t)sk_park_forever;   // lr
+                *(uintptr_t *)(ss + 256) = (uintptr_t)sk_park_forever;   // pc
+            }
         }
 #endif
         return;   // 不 re-raise：返回后内核跳到 __pc（死循环）
