@@ -19,7 +19,7 @@ BUILD="$ROOT/build"
 DIST="$ROOT/dist"
 OUTNAME="AppDump"
 APP="appdump"
-ARCH="arm64"
+ARCH="${ARCH:-arm64}"
 MIN_IOS="15.0"
 
 APPDIR="$BUILD/Payload/$OUTNAME.app"

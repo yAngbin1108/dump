@@ -8,18 +8,25 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        # arm64 是日常包；arm64e 才能做 RemoteCall（应用降级 / 阻止更新）。
+        arch: [ arm64, arm64e ]
     steps:
       - uses: actions/checkout@v4
 
       - name: Install ldid
         run: brew install ldid
 
-      - name: Build AppDump.ipa
+      - name: Build AppDump.ipa (${{ matrix.arch }})
+        env:
+          ARCH: ${{ matrix.arch }}
         run: bash ci/build_ipa_macos.sh
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AppDump-ipa
+          name: AppDump-ipa-${{ matrix.arch }}
           path: dist/*.ipa
           if-no-files-found: error
