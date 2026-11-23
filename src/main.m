@@ -1,6 +1,9 @@
 //
 //  main.m
-//  AppDump — four tabs: Kernel / App Decrypt / Processes / Files.
+//  AppDump — four tabs: Kernel / App Decrypt / Tools / Files.
+//
+//  「工具」页把进程管理、应用降级、阻止应用更新收在同一处（原来是单独的
+//  「进程」标签页）。
 //
 //  Layout follows the original AppDump (SwiftUI List + Section + LabeledContent
 //  rows with a leading header label and a trailing status accessory), rebuilt
@@ -17,7 +20,7 @@
 #import "SKKernelViewController.h"
 #import "SKLog.h"
 #import "SKStorage.h"
-#import "ProcessListViewController.h"
+#import "SKToolsViewController.h"
 #import "offsets.h"
 
 #pragma mark - 拉起相关的 entitlement 探针
@@ -100,7 +103,7 @@ static void sk_log_launch_entitlements(void)
 
     // 只在文件管理器 tab 该不该在这一点真的变了时才重建：重建会把每个 tab 的
     // 导航栈一起丢掉，没必要为了关一次设置页就重置一次。
-    // 4 个 tab = 砸壳 / 应用 / 进程 / 文件；关掉文件管理器就是 3 个。
+    // 4 个 tab = 砸壳 / 应用 / 工具 / 文件；关掉文件管理器就是 3 个。
     if (self.viewControllers.count == (showFiles ? 4u : 3u)) return;
 
     // UITabBarController 在 viewControllers 还没设时 selectedIndex 是 NSNotFound，
@@ -125,14 +128,14 @@ static void sk_log_launch_entitlements(void)
                                               selectedImage:nil];
     [tabs addObject:navDump];
 
-    // 进程管理：列表 / 结束进程 / 内存编辑。数据来自内核 allproc 遍历，
-    // 需要先运行利用链；没跑的话列表是空的，页面会自己提示。
-    ProcessListViewController *procs = [ProcessListViewController new];
-    UINavigationController *navProcs = [[UINavigationController alloc] initWithRootViewController:procs];
-    navProcs.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"进程"
+    // 工具：进程管理 / 应用降级 / 阻止应用更新。
+    // 进程列表需要先运行利用链；没跑的话页面会自己提示。
+    SKToolsViewController *tools = [SKToolsViewController new];
+    UINavigationController *navTools = [[UINavigationController alloc] initWithRootViewController:tools];
+    navTools.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"工具"
                                                        image:[UIImage systemImageNamed:@"list.bullet.rectangle"]
                                                selectedImage:nil];
-    [tabs addObject:navProcs];
+    [tabs addObject:navTools];
 
     if (showFiles) {
         // Files starts at "/" and uses the directory browser rebuilt from the

@@ -57,6 +57,9 @@ kexploit/TaskRop/pac.m
 kexploit/TaskRop/exc.m
 kexploit/TaskRop/findcachedataoff.m
 kexploit/kcblock.m
+kexploit/skrc.m
+kexploit/skdowngrade.m
+kexploit/skblockupdates.m
 kexploit/pe/sbx.m
 kexploit/cyremote.m
 kexploit/pe/vfs.m
