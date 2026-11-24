@@ -13,6 +13,10 @@
 #ifndef CY_VENDOR_PREFIX_H
 #define CY_VENDOR_PREFIX_H
 
+/* vendored RemoteCall.m 依赖 MAP_PRIVATE/MAP_ANON 但没有包含 sys/mman.h
+   （Cyanide 工程里靠别处传递进来）。用这个强制包含头补上，不改 vendored 源码。 */
+#include <sys/mman.h>
+
 /* ── RemoteCall.m ─────────────────────────────────────────────────────── */
 #define init_remote_call                                                cyv_init_remote_call
 #define init_remote_call_with_first_exception_timeout                   cyv_init_remote_call_with_first_exception_timeout
