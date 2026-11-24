@@ -1,6 +1,6 @@
 # dump
 
-iOS 内核工具箱（AppDump / Blade 系）：砸壳、应用容器浏览、**工具页（进程管理 / 应用降级 / 阻止更新）**、
+iOS 内核工具箱（AppDump / Blade 系）：砸壳、应用容器浏览、**工具页（FairPlay 砸壳 / 进程管理 / 应用降级 / 阻止更新）**、
 文件管理器与**写权限修复**。
 
 本仓库是在第三方 AppDump 源码的基础上，补上 **进程管理**、**修复写权限**、**应用降级**、
@@ -13,8 +13,28 @@ iOS 内核工具箱（AppDump / Blade 系）：砸壳、应用容器浏览、**�
 | --- | --- |
 | 砸壳 | 运行利用链（VFS / SBX / Hybrid）、内核缓存管理、日志、设置 |
 | 应用 | 已安装应用列表、图标、容器路径、FairPlay 砸壳为 IPA |
-| **工具** | 进程管理、应用降级、阻止应用更新（三个入口收在同一页） |
+| **工具** | FairPlay 砸壳、进程管理、应用降级、阻止应用更新（四个入口收在同一页） |
 | 文件 | 从 `/` 起的文件浏览器，长按 chmod / chown / 重命名 / 删除 / 分享 |
+
+### FairPlay 砸壳（fairplayd）
+
+入口：**工具 → FairPlay 砸壳**。`src/app/FairPlayCore.{c,h}` + `ADXFairPlayJob.{h,m}` +
+`ADXAppListViewController.{h,m}` + `ADXJobViewController.{h,m}`
+
+* 与「砸壳」标签页里的内核砸壳完全独立：**不需要内核漏洞，也不启动目标 App**。
+* 原理：`mremap_encrypted()` 没有权限检查，任何进程都能让内核把一段映射交给
+  FairPlay（text_crypter_create → FairPlayIOKit → **fairplayd**）解密。用
+  `cryptid = 2`（CRYPTID_MODEL_ENCRYPTION）走 `vm_map_apple_protected`，只需要
+  `PROT_READ` 映射，不触发 AMFI library validation。
+* fairplayd 按**路径**找授权：`<dir>/SC_Info/<name>.sinf` 必须与二进制同目录。
+  所以流程是：拷贝应用包到暂存目录 → 按 `SC_Info/Manifest.plist` 的
+  `SinfPaths` / `SinfReplicationPaths` 给每个加密 Mach-O 补齐 SINF → 对**原始安装路径**
+  做映射（`fp_decrypt_file_ex(in_path, map_path, out_path, …)`）→ 回读明文写进副本。
+* 出包前可选把 `MinimumOSVersion` 降到 10.0、去掉 `UIRequiredDeviceCapabilities` /
+  `UISupportedDevices`（只改暂存副本，不动已安装包），最后打 `Payload/…` 成 IPA，
+  并复查有没有残留的 `cryptid != 0`。
+* 判断「内核真的拒绝」和「我们自己的判据拒绝」用的是 `fp_file_stats_t`
+  （slices_ok / plain / fake_plain / residue_cipher / heuristic_rejected）。
 
 ### 进程管理
 
@@ -104,7 +124,7 @@ GitHub Actions（macOS）自动构建，产物是 `dist/AppDump-arm64.ipa` 与
 
     src/main.m                       tab 结构（砸壳 / 应用 / 工具 / 文件）
     src/ProcessListViewController.*  进程管理
-    src/app/SKToolsViewController.*  工具页（三个入口）
+    src/app/SKToolsViewController.*  工具页（四个入口）
     src/app/SKDowngradeViewController.*  应用降级 UI（版本查询 / 选择 / 执行）
     src/app/SKBlockUpdatesViewController.*  阻止更新 UI（多选 / 进度）
     src/app/SKToolApps.*             应用列表（两个功能共用）

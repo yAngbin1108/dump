@@ -15,6 +15,7 @@ APPLICATION_NAME = blade
 
 blade_FILES = main.m FileManager.m Exploit.m ProcessListViewController.m \
 	$(wildcard app/*.m) \
+	app/FairPlayCore.c \
 	kexploit/darksword.m \
 	kexploit/offsets.m \
 	kexploit/utils.m \

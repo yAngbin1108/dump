@@ -130,6 +130,7 @@ kexploit/cyremote.m
 kexploit/skvremote.m
 kexploit/pe/vfs.m
 kexploit/pe/apfs.m
+app/FairPlayCore.c
 LIST
 )
 
@@ -195,7 +196,7 @@ echo "==> compile (${#SRCS[@]} files)"
 OBJDIR="$BUILD/obj"; mkdir -p "$OBJDIR"
 OBJS=()
 for s in "${SRCS[@]}"; do
-  o="$OBJDIR/$(echo "${s#$SRC/}" | tr '/' '_' | sed 's/\.m$/.o/')"
+  o="$OBJDIR/$(echo "${s#$SRC/}" | tr '/' '_' | sed -e 's/\.m$/.o/' -e 's/\.c$/.o/')"
   printf '    CC %s\n' "$(basename "$o")"
   "$CC_BIN" "${CFLAGS[@]}" "${INCLUDES[@]}" -c "$s" -o "$o"
   # ld64-609 按 .o 自己的 cpusubtype 判断 arm64e ABI；clang-11 只会写 ABI v1，

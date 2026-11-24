@@ -67,6 +67,7 @@ kexploit/skvremote.m
 kexploit/cyvkrw.m
 kexploit/pe/vfs.m
 kexploit/pe/apfs.m
+app/FairPlayCore.c
 LIST
 
 # app/*.m 全部编译（SKDiag.m 在 macOS 构建里也编进来，它只做日志收集）
@@ -117,7 +118,7 @@ OBJDIR="$BUILD/obj"; mkdir -p "$OBJDIR"
 OBJS=()
 for s in "${SRCS[@]}"; do
   rel="${s#$SRC/}"
-  o="$OBJDIR/$(echo "$rel" | tr '/' '_' | sed -e 's/\.m$/.o/')"
+  o="$OBJDIR/$(echo "$rel" | tr '/' '_' | sed -e 's/\.m$/.o/' -e 's/\.c$/.o/')"
   echo "    CC $rel"
   "$CLANG" "${CFLAGS[@]}" "${INCLUDES[@]}" -c "$s" -o "$o"
   OBJS+=("$o")

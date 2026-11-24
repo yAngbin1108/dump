@@ -2,8 +2,8 @@
 //  main.m
 //  AppDump — four tabs: Kernel / App Decrypt / Tools / Files.
 //
-//  「工具」页把进程管理、应用降级、阻止应用更新收在同一处（原来是单独的
-//  「进程」标签页）。
+//  「工具」页把 FairPlay 砸壳、进程管理、应用降级、阻止应用更新收在同一处
+//  （进程管理原本是单独的「进程」标签页）。
 //
 //  Layout follows the original AppDump (SwiftUI List + Section + LabeledContent
 //  rows with a leading header label and a trailing status accessory), rebuilt
