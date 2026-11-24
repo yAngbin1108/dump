@@ -69,6 +69,14 @@ static void crash_log_backtrace(int sig) {
 static void crash_signal_handler(int sig, siginfo_t *info, void *uctx) {
     (void)info;
 
+    // 先把判定条件写进日志：窗口深度 / 是否主线程。以前只知道"没 park"，
+    // 无法区分是窗口没开还是主线程，白白多跑一轮真机。
+    char diag[128];
+    int dn = snprintf(diag, sizeof(diag),
+                      "\n*** BLADE signal %d depth=%d main=%d ***\n",
+                      sig, (int)gInjectionDepth, pthread_main_np() ? 1 : 0);
+    if (dn > 0) crash_write(diag, (size_t)dn);
+
     // ── 注入窗口 ────────────────────────────────────────────────────────
     // RemoteCall 在 iOS 17 上会在注入线程里踩到 0xffffffffffffffff，
     // 这时候线程状态已经没救了，但把这条线程停住、让 App 活着，
