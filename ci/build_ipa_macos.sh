@@ -79,6 +79,7 @@ INCLUDES=(
   -I"$SRC/kexploit/headers"
   -I"$SRC/kexploit/xpc"
   -I"$SRC/app"
+  -I"$SRC/vendor/cyanide"
 )
 
 CFLAGS=(
