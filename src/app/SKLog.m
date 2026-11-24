@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 // Keep the file bounded; the interesting part is always the tail.
 static const long long kSKLogMaxBytes = 256 * 1024;
@@ -168,6 +169,23 @@ void SKLogCaptureStdout(void) {
     });
 }
 
+// 裸 fd：不经过 gSKLogLock，也不经过 FILE 缓冲。用途只有一个 ——
+// 一旦有线程死在日志锁里（注入/校准把某条线程卡在锁上时会发生），
+// 整个 App 的日志会瞬间静默，什么也查不出来。这条通道保证日志不断流。
+static int sk_raw_fd(void) {
+    static int fd = -1;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+                                                             NSUserDomainMask, YES).firstObject;
+        if (docs.length) {
+            NSString *path = [docs stringByAppendingPathComponent:@"sk.log"];
+            fd = open(path.fileSystemRepresentation, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        }
+    });
+    return fd;
+}
+
 void SKLog(NSString *fmt, ...) {
     sk_log_ensure();
 
@@ -185,11 +203,21 @@ void SKLog(NSString *fmt, ...) {
     time_t secs = tv.tv_sec;
     localtime_r(&secs, &tmv);
 
-    [gSKLogLock lock];
+    BOOL locked = [gSKLogLock lockBeforeDate:[NSDate dateWithTimeIntervalSinceNow:0.4]];
     char line[4096];
     snprintf(line, sizeof(line), "%02d:%02d:%02d.%03d  %s\n",
              tmv.tm_hour, tmv.tm_min, tmv.tm_sec, (int)(tv.tv_usec / 1000),
              msg.UTF8String ?: "");
+    if (!locked) {
+        // 有线程卡在日志锁上：绕过锁直接写，别让诊断信息跟着一起消失。
+        int fd = sk_raw_fd();
+        if (fd >= 0) {
+            size_t n = strlen(line);
+            ssize_t w = write(fd, line, n);
+            (void)w;
+        }
+        return;
+    }
     if (gSKLogFile) {
         // 上限以前只在打开文件时检查一次，所以一次会话里可以无限长下去
         // （砸壳时每个镜像、每个 entry 都写日志）。写入路径上再查一次。
