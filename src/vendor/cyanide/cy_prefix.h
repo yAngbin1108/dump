@@ -16,6 +16,13 @@
 /* vendored RemoteCall.m 依赖 MAP_PRIVATE/MAP_ANON 但没有包含 sys/mman.h
    （Cyanide 工程里靠别处传递进来）。用这个强制包含头补上，不改 vendored 源码。 */
 #include <sys/mman.h>
+#import <UIKit/UIKit.h>
+
+/* Thread.m 用这个宏做系统版本分支，Cyanide 在 kexploit_opa334.h 里定义。 */
+#ifndef SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO
+#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v) \
+    ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
+#endif
 
 /* ── RemoteCall.m ─────────────────────────────────────────────────────── */
 #define init_remote_call                                                cyv_init_remote_call
