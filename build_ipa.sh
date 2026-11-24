@@ -127,6 +127,7 @@ kexploit/skdowngrade.m
 kexploit/skblockupdates.m
 kexploit/pe/sbx.m
 kexploit/cyremote.m
+kexploit/skvremote.m
 kexploit/pe/vfs.m
 kexploit/pe/apfs.m
 LIST

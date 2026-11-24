@@ -6,7 +6,7 @@
 #import "SKLoc.h"
 #import "SKOverlay.h"
 #import "SKLog.h"
-#import "RemoteCall.h"
+#import "skvremote.h"
 #import "darksword.h"
 
 #include <objc/runtime.h>
