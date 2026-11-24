@@ -8,6 +8,7 @@
 #import "SKToolLogViewController.h"
 #import "skdowngrade.h"
 #import "skrc.h"
+#import "skcydowngrade.h"
 
 @interface SKDowngradeViewController (Runner)
 + (void)runDowngradeWithTrackId:(long long)trackId
@@ -436,19 +437,43 @@ static NSArray<NSString *> *SKDowngradeCountryCodes(void) {
                            appName ?: @"", trackId, versionId]];
 
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-            int rc = skdg_perform_downgrade(trackId, versionId, lookupJSON, ^(NSString *line) {
-                [logVC appendLine:line];
-            });
+            int rc = 30;
+            NSString *detail = nil;
+
+            // 先走 Cyanide 引擎（vendored TaskRop，原样移植）；不可用或失败再退回内置链。
+            NSString *cyWhy = skcyd_unavailable_reason();
+            if (!cyWhy.length) {
+                [logVC appendLine:@"引擎：Cyanide RemoteCall（vendored TaskRop）"];
+                rc = skcyd_perform_downgrade(trackId, versionId, ^(NSString *line) {
+                    [logVC appendLine:line];
+                });
+                detail = skcyd_last_error();
+                if (rc != 0) {
+                    [logVC appendLine:[NSString stringWithFormat:@"Cyanide 引擎失败（%@），改用内置注入链…",
+                                       detail.length ? detail : [NSString stringWithFormat:@"%d", rc]]];
+                }
+            } else {
+                [logVC appendLine:cyWhy];
+            }
+
+            if (rc != 0) {
+                [logVC appendLine:@"引擎：内置 skrc / skdowngrade"];
+                rc = skdg_perform_downgrade(trackId, versionId, lookupJSON, ^(NSString *line) {
+                    [logVC appendLine:line];
+                });
+                detail = skdg_last_error();
+            }
+
             NSString *msg;
             switch (rc) {
                 case 0:  msg = @"请求已提交"; break;
                 case 1:  msg = @"内核未就绪"; break;
                 case 20: msg = @"注入失败"; break;
+                case 21: msg = @"负载执行失败"; break;
                 case 30: msg = @"当前系统不支持注入"; break;
                 case 98: msg = @"超时"; break;
                 default: msg = [NSString stringWithFormat:@"失败（%d）", rc]; break;
             }
-            NSString *detail = skdg_last_error();
             if (rc != 0 && detail.length) msg = [msg stringByAppendingFormat:@"：%@", detail];
             dispatch_async(dispatch_get_main_queue(), ^{
                 [logVC finishWithSuccess:(rc == 0) message:msg];

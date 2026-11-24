@@ -59,6 +59,7 @@ kexploit/TaskRop/findcachedataoff.m
 kexploit/kcblock.m
 kexploit/skrc.m
 kexploit/skdowngrade.m
+kexploit/skcydowngrade.m
 kexploit/skblockupdates.m
 kexploit/pe/sbx.m
 kexploit/cyremote.m
@@ -99,6 +100,14 @@ FRAMEWORKS=(
 
 LIBS=( -L"$SRC/kexploit/lib" -lgrabkernel2 -lxpf -lz )
 
+# ── vendored Cyanide TaskRop ────────────────────────────────────────────────
+# 原样编译 src/vendor/cyanide/TaskRop/*.m，只在编译期用 cy_prefix.h 加前缀，
+# 避免和 dump 自己的 kexploit/TaskRop 撞符号（两套实现要并存）。
+VENDOR_SRCS=()
+for f in "$SRC/vendor/cyanide/TaskRop"/*.m; do
+  [ -f "$f" ] && VENDOR_SRCS+=("$f")
+done
+
 # ── 编译 ────────────────────────────────────────────────────────────────────
 echo "==> compile (${#SRCS[@]} files)"
 OBJDIR="$BUILD/obj"; mkdir -p "$OBJDIR"
@@ -108,6 +117,16 @@ for s in "${SRCS[@]}"; do
   o="$OBJDIR/$(echo "$rel" | tr '/' '_' | sed -e 's/\.m$/.o/')"
   echo "    CC $rel"
   "$CLANG" "${CFLAGS[@]}" "${INCLUDES[@]}" -c "$s" -o "$o"
+  OBJS+=("$o")
+done
+
+echo "==> compile vendored Cyanide (${#VENDOR_SRCS[@]} files)"
+for s in "${VENDOR_SRCS[@]}"; do
+  rel="${s#$SRC/}"
+  o="$OBJDIR/vendor_$(echo "$rel" | tr '/' '_' | sed -e 's/\.m$/.o/')"
+  echo "    CC $rel"
+  "$CLANG" "${CFLAGS[@]}" "${INCLUDES[@]}" \
+    -include "$SRC/vendor/cyanide/cy_prefix.h" -c "$s" -o "$o"
   OBJS+=("$o")
 done
 
