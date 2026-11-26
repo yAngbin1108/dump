@@ -331,7 +331,7 @@ static NSString *adx_group_from_profile(void) {
     [self emit:[NSString stringWithFormat:@"SINF 补齐 %lu 个", (unsigned long)sinfCopied]];
 
     // ── 5. 逐个解密 ─────────────────────────────────────────────────────
-    NSUInteger ok = 0, plain = 0, failed = 0, flagsOnly = 0, fakePlain = 0;
+    NSUInteger ok = 0, plain = 0, failed = 0, flagsOnly = 0, fakePlain = 0, residueOk = 0;
     NSMutableArray<NSString *> *failedPaths = [NSMutableArray array];
     NSUInteger total = encrypted.count;
     for (NSUInteger i = 0; i < total; i++) {
@@ -367,6 +367,7 @@ static NSString *adx_group_from_profile(void) {
         }
 
         if (rc == 0) {
+            residueOk += stats.slices_residue_ok;
             if (stats.slices_fake_plain > 0 && stats.slices_ok == 0) {
                 fakePlain++;
                 [self emit:[NSString stringWithFormat:@"✅ 假加密壳，按明文出包：%@", rel]];
@@ -441,8 +442,9 @@ static NSString *adx_group_from_profile(void) {
 
     double secs = -[started timeIntervalSinceNow];
     NSString *summary = [NSString stringWithFormat:
-                         @"%@\n解密 %lu · 明文 %lu · 假壳 %lu · 仅清标志 %lu · 失败 %lu%@\n产物 %@（%@）· 用时 %.0f 秒",
+                         @"%@\n解密 %lu · 明文 %lu · 假壳 %lu · 残段 %lu · 仅清标志 %lu · 失败 %lu%@\n产物 %@（%@）· 用时 %.0f 秒",
                          appName, (unsigned long)ok, (unsigned long)plain, (unsigned long)fakePlain,
+                         (unsigned long)residueOk,
                          (unsigned long)flagsOnly, (unsigned long)failed,
                          residue ? [NSString stringWithFormat:@" · 残留 %lu", (unsigned long)residue] : @"",
                          ipa.lastPathComponent, ADXBytesText(size), secs];
