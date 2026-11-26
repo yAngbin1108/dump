@@ -10,8 +10,6 @@
 #import "SKLaraFileBrowser.h"
 #import "SKOverlay.h"
 #import "SKLog.h"
-#import "kcblock.h"
-#import "decrypt.h"
 #import "kexploit/utils.h"
 
 #include <sys/stat.h>
@@ -428,70 +426,6 @@ static NSDictionary<NSString *, NSString *> *SKBuildContainerIndex(NSString *roo
 }
 
 
-// ── 限制某个 App 访问 Keychain（不动文件）───────────────────────────────────
-// 内核侧只把目标进程 sandbox label 里指向 securityd / Keychains 的那几条
-// extension 摘掉：它的 SecItem* 之后会在 mach-lookup / 文件检查阶段被内核拒掉，
-// 磁盘不动，其它 App 不受影响。目标必须在运行。
-static dispatch_source_t gKcTimer = nil;
-static pid_t gKcTimerPid = 0;
-
-- (void)kcWatchdogStart:(pid_t)pid {
-    if (gKcTimer) { dispatch_source_cancel(gKcTimer); gKcTimer = nil; }
-    gKcTimerPid = pid;
-    gKcTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0,
-                                      dispatch_get_global_queue(QOS_CLASS_UTILITY, 0));
-    dispatch_source_set_timer(gKcTimer, dispatch_time(DISPATCH_TIME_NOW, 0),
-                              150ull * NSEC_PER_MSEC, 50ull * NSEC_PER_MSEC);
-    dispatch_source_set_event_handler(gKcTimer, ^{
-        char r[512] = {0};
-        int n = kcblock_port_block(gKcTimerPid, r, sizeof(r));
-        if (n > 0) SKLog(@"[kcblock] watchdog cleared %d\n%s", n, r);
-    });
-    dispatch_resume(gKcTimer);
-    SKLog(@"[kcblock] watchdog started for pid %d", pid);
-}
-
-- (void)kcWatchdogStop {
-    if (!gKcTimer) return;
-    dispatch_source_cancel(gKcTimer);
-    gKcTimer = nil;
-    SKLog(@"[kcblock] watchdog stopped");
-}
-
-- (void)keychainActionForApp:(SKInstalledApp *)a apply:(BOOL)apply {
-    pid_t pid = a.executable.length ? find_process_pid(a.executable.UTF8String) : -1;
-    if (pid <= 0) {
-        [self toast:@"该 App 没在运行：先打开它再操作"];
-        return;
-    }
-    char report[4096] = {0};
-    int n = apply ? kcblock_apply(pid, report, sizeof(report))
-                  : kcblock_restore(pid, report, sizeof(report));
-    if (apply) {
-        // 不管 extension 层有没有命中，都再做一次端口层（真正拦 keychain 的那层）
-        char ports[3072] = {0};
-        int pn = kcblock_port_block(pid, ports, sizeof(ports));
-        if (pn > 0) n += pn;
-        strncat(report, "\n", sizeof(report) - strlen(report) - 1);
-        strncat(report, ports, sizeof(report) - strlen(report) - 1);
-    }
-    if (apply && n == 0) {
-        // 这台机器上 keychain 权限不在 sandbox extension 里：把 ipc namespace 的
-        // port 情况一并打出来，下一步按端口拦截。
-        char ports[3072] = {0};
-        kcblock_port_scan(pid, ports, sizeof(ports));
-        strncat(report, "\n", sizeof(report) - strlen(report) - 1);
-        strncat(report, ports, sizeof(report) - strlen(report) - 1);
-    }
-    SKLog(@"[kcblock] %@ %@ pid=%d -> %d\n%s", a.bundleID,
-          apply ? @"block" : @"restore", pid, n, report);
-    if (apply) [self kcWatchdogStart:pid]; else [self kcWatchdogStop];
-    NSString *msg = [NSString stringWithFormat:@"%@\n%s",
-                     (n > 0 ? (apply ? @"已阻断 keychain" : @"已恢复 keychain") : @"没有找到可处理的条目"),
-                     report];
-    [self toast:msg];
-}
-
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
     [tv deselectRowAtIndexPath:ip animated:YES];
     SKInstalledApp *a = self.filtered[ip.row];
@@ -522,18 +456,6 @@ static pid_t gKcTimerPid = 0;
     [sheet addAction:[UIAlertAction actionWithTitle:SKLoc(@"apps.menu.decrypt")
         style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
         [weakSelf decryptApp:a];
-    }]];
-
-
-
-    [sheet addAction:[UIAlertAction actionWithTitle:@"限制 Keychain"
-        style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
-        [weakSelf keychainActionForApp:a apply:YES];
-    }]];
-
-    [sheet addAction:[UIAlertAction actionWithTitle:@"解除 Keychain 限制"
-        style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x) {
-        [weakSelf keychainActionForApp:a apply:NO];
     }]];
 
     [sheet addAction:[UIAlertAction actionWithTitle:SKLoc(@"common.cancel") style:UIAlertActionStyleCancel handler:nil]];
