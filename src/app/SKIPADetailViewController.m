@@ -135,7 +135,7 @@
                 a.integrity == SKIPAIntegrityOk ? @"完整"
                     : a.integrity == SKIPAIntegrityBroken ? [NSString stringWithFormat:@"异常 — %@", a.problem ?: @"未知"]
                     : @"无法读取",
-                a.signed ? @"有 _CodeSignature" : @"缺失",
+                a.signedBundle ? @"有 _CodeSignature" : @"缺失",
                 a.encrypted ? @"仍有密文（不能直接用）" : (a.binaries.count ? @"已解密" : @"未检测"),
                 a.archs.count ? [a.archs componentsJoinedByString:@", "] : @"—",
                 a.entryCount ? [NSString stringWithFormat:@"%lu", (unsigned long)a.entryCount] : @"—",
@@ -147,7 +147,7 @@
             UITableViewCell *c = [self infoCell:tv title:keys[ip.row] value:vals[ip.row]];
             UIColor *color = UIColor.labelColor;
             if (ip.row == 0) color = a.integrity == SKIPAIntegrityOk ? UIColor.systemGreenColor : UIColor.systemOrangeColor;
-            else if (ip.row == 1) color = a.signed ? UIColor.labelColor : UIColor.systemOrangeColor;
+            else if (ip.row == 1) color = a.signedBundle ? UIColor.labelColor : UIColor.systemOrangeColor;
             else if (ip.row == 2) color = a.encrypted ? UIColor.systemRedColor
                                      : (a.binaries.count ? UIColor.systemGreenColor : UIColor.secondaryLabelColor);
             c.detailTextLabel.textColor = color;

@@ -499,11 +499,11 @@ void SKIPAAnalyze(SKIPA *ipa) {
     }
 
     // 签名：主包自带 _CodeSignature/CodeResources
-    ipa.signed = NO;
+    ipa.signedBundle = NO;
     for (NSString *n in allNames) {
         if ([n hasPrefix:[mainPrefix stringByAppendingString:@"/"] ] &&
             [n rangeOfString:@"/_CodeSignature/CodeResources" options:NSBackwardsSearch].location != NSNotFound) {
-            ipa.signed = YES;
+            ipa.signedBundle = YES;
             break;
         }
     }
@@ -648,7 +648,7 @@ void SKIPAAnalyze(SKIPA *ipa) {
     if (!bins.count) {
         ipa.integrity = SKIPAIntegrityBroken;
         ipa.problem = @"包里没有可解析的 Mach-O";
-    } else if (!ipa.signed) {
+    } else if (!ipa.signedBundle) {
         ipa.integrity = SKIPAIntegrityBroken;
         ipa.problem = @"缺少 _CodeSignature（未签名或签名被删）";
     } else {
@@ -815,7 +815,7 @@ NSString *SKIPAReportText(SKIPA *ipa) {
                      : ipa.integrity == SKIPAIntegrityBroken ? [NSString stringWithFormat:@"异常（%@）", ipa.problem ?: @"未知"]
                      : @"无法读取";
     [s appendFormat:@"结构：%@\n", state];
-    [s appendFormat:@"签名：%@\n", ipa.signed ? @"有 _CodeSignature" : @"无"];
+    [s appendFormat:@"签名：%@\n", ipa.signedBundle ? @"有 _CodeSignature" : @"无"];
     [s appendFormat:@"加密：%@\n", ipa.encrypted ? @"仍有密文" : (ipa.binaries.count ? @"已解密" : @"未检测")];
     [s appendFormat:@"条目：%lu 个，解压后 %@\n", (unsigned long)ipa.entryCount, ADXBytesText(ipa.uncompressedTotal)];
     if (ipa.extensionSummary.length) [s appendFormat:@"扩展：%@\n", ipa.extensionSummary];

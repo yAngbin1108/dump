@@ -57,7 +57,7 @@ typedef NS_ENUM(NSInteger, SKIPAIntegrity) {
 @property (nonatomic, strong) NSMutableArray<NSString *> *notes;  ///< 分析出来的提示
 
 @property (nonatomic, assign) BOOL encrypted;              ///< 有任何一个二进制还是密文
-@property (nonatomic, assign) BOOL signed;                 ///< 有 _CodeSignature/CodeResources
+@property (nonatomic, assign) BOOL signedBundle;                    ///< 有 _CodeSignature/CodeResources
 @property (nonatomic, assign) BOOL isCustomBundleID;       ///< bundle id 不属于 App Store 形态
 @property (nonatomic, assign) BOOL hasWatchApp;
 @property (nonatomic, assign) BOOL hasExtensions;
