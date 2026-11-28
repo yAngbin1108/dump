@@ -470,9 +470,11 @@ void SKIPAAnalyze(SKIPA *ipa) {
         if (payload == NSNotFound || payload + 2 >= parts.count) continue;
         if ([parts.lastObject caseInsensitiveCompare:@"Info.plist"] != NSOrderedSame) continue;
 
+        // .appex 并不以 .app 结尾（是 .appex），两个都要认，否则扩展整段被漏掉
         NSUInteger appIdx = NSNotFound;
         for (NSUInteger i = payload + 1; i + 1 < parts.count; i++) {
-            if ([parts[i].lowercaseString hasSuffix:@".app"]) appIdx = i;
+            NSString *low = parts[i].lowercaseString;
+            if ([low hasSuffix:@".app"] || [low hasSuffix:@".appex"]) appIdx = i;
         }
         if (appIdx == NSNotFound) continue;
 
@@ -583,6 +585,7 @@ void SKIPAAnalyze(SKIPA *ipa) {
     }
     for (NSString *prefix in extPrefixes) {
         if ([prefix containsString:@"/Watch/"]) continue;
+        // Share.appex -> Share
         NSString *ps = [prefix.lastPathComponent stringByDeletingPathExtension];
         NSString *wanted = [prefix stringByAppendingPathComponent:ps];
         for (NSString *n in allNames) {
