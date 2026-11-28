@@ -387,8 +387,8 @@
     [self presentViewController:a animated:YES completion:nil];
 }
 
-- (void)tableView:(UITableView *)tv trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)ip
-    -> UISwipeActionsConfiguration * {
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tv
+    trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)ip {
     if (ip.section != 1) return nil;
     SKIPA *ipa = self.items[ip.row];
     __weak typeof(self) weakSelf = self;
