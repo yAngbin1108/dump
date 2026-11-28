@@ -18,6 +18,8 @@
 @property (nonatomic, assign) NSInteger filter;                 // 0 全部 1 已解密 2 未解密 3 结构异常
 @property (nonatomic, strong) UIActivityIndicatorView *spinner;
 @property (nonatomic, strong) NSOperationQueue *queue;
+@property (nonatomic, assign) BOOL scanning;
+@property (nonatomic, assign) BOOL hasAppeared;
 @end
 
 @implementation SKIPAViewController
@@ -52,17 +54,27 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    // 从详情页回来可能删过东西：文件数变了就重新扫
-    if (!self.isEditing && self.allItems.count != [self countOnDisk]) [self reload];
+    // 从详情页回来可能删过东西：数组和磁盘对不上时补一次重扫。
+    // 首次显示由 viewDidLoad 的 reload 负责，这里直接放行，避免重复扫描。
+    if (self.hasAppeared && !self.isEditing && !self.scanning) [self checkDiskChanged];
+    self.hasAppeared = YES;
 }
 
-- (NSUInteger)countOnDisk {
-    return SKIPAScan().count;
+/// 只比较数量与文件名集合，避免每次返回都全量 stat 一遍大包。
+- (void)checkDiskChanged {
+    NSArray<SKIPA *> *now = SKIPAScan();
+    if (now.count == self.allItems.count) return;
+    self.allItems = [now mutableCopy];
+    [self applyFilter];
+    [self.tableView reloadData];
+    [self analyzeInBackground];
 }
 
 #pragma mark - 载入
 
 - (void)reload {
+    if (self.scanning) return;
+    self.scanning = YES;
     [self.spinner startAnimating];
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
@@ -70,11 +82,13 @@
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
+            strongSelf.scanning = NO;
             [strongSelf.queue cancelAllOperations];
             strongSelf.allItems = [scanned mutableCopy];
             [strongSelf applyFilter];
             [strongSelf.spinner stopAnimating];
             [strongSelf.tableView.refreshControl endRefreshing];
+            [strongSelf.tableView reloadData];
             [strongSelf analyzeInBackground];
         });
     });
@@ -107,9 +121,12 @@
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 if (!strongSelf) return;
-                NSInteger row = [strongSelf rowForPath:ipa.path];
-                if (row >= 0) [strongSelf.tableView reloadRowsAtIndexPaths:@[ [NSIndexPath indexPathForRow:row inSection:1] ]
-                                                          withRowAnimation:UITableViewRowAnimationNone];
+                // 不要用 reloadRowsAtIndexPaths：分析是异步的，表格的行数可能已经从 0 变成 1
+                // （扫描回来时是空、分析完成时已经有包），这种「行数变化 + 单行刷新」会让
+                // UITableView 认为更新前后行数不一致而抛 NSInternalInconsistencyException。
+                // 整表重载是原子操作，也不会把选中状态之外的编辑态打乱。
+                if (strongSelf.allItems.count == 0) return;
+                [strongSelf.tableView reloadData];
             });
         }];
     }
